@@ -1,0 +1,101 @@
+LIBRARY ieee ;
+USE ieee.std_logic_1164.all ;
+USE ieee.numeric_std.all ; 
+
+--o processo é chamado sempre que uma das variáveis definidas nele mudam 
+--vulgo usaremos na mudança de cloc e checaremos com clck'event = 1 quer dizer que ele foi de 0 pra 1 
+-- nao pode usar saida no codigo 
+
+ENTITY elevador IS -- declarando nossas entradas 
+	PORT(
+		clk, clk_placa: std_logic ; 
+		reset: in bit ;
+		rst_db: in std_logic ; 
+		andar_chamado: in unsigned (3 downto 0) := (others =>'0') ; -- bits de 3 a 0 - 3 mais significativo 
+		andar_atual: out unsigned (3 downto 0) := (others => '0') ; -- tem que conseguir representar 16 
+		movimento: out bit_vector (0 downto 1) := (others => '0') ; -- vetor de dois bits que representa os estados que sao definidos na arq
+		)
+
+END elevador; 
+
+-- é como se o states fosse uma struct 
+-- delcara uma variavel do tipo states 
+
+ARCHITECTURE arch OF elevador IS
+	
+	TYPE st IS (parado, subindo, descendo) ; -- "00" - parado, "01" subindo, "10" descendo 
+	SIGNAL estado: st ; 
+	SIGNAL var_andar_atual: unsigned (3 downto 0) := (others => '0') ; -- variavel interna que guarda o estado atual 
+	--SIGNAL estado_desejado: unsigned (3 downto 0) := (others => '0') ; -- estado que ele quer ir 
+	SIGNAL clock: std_logic ; -- clock da saida do debouncer 
+   -- Signal eh como se fossem os fios - cria as variaveis aqui 
+	COMPONENT debouncer 
+	PORT( 
+		clk_fpga, rst_debouncer, input_key: IN std_logic ; 
+		out_key: OUT std_logic ; 
+	END COMPONENT ; 
+
+BEGIN
+		
+		D: debouncer PORT MAP(clck_fpga => clk_placa, rst_debouncer => rst_db, input_key => clk, out_key => clock);
+		
+		PROCESS (clock, reset)
+		
+		BEGIN 
+		
+			if(reset = '1') then
+				estado <= parado ; 
+				movimento <= "00" ; 
+				var_andar_atual <= "0000" ; 
+				estado_desejado <= "0000" ; 
+			
+			elsif (clock'event) and (clock = '1') then 
+				
+				case estado is
+				
+					WHEN parado => 
+					
+						IF (andar_chamado != var_andar_atual) then 
+							IF(andar_chamado > var_andar_atual) then 
+								movimento <= "01" ; 
+								var_andar_atual <= var_andar_atual + 1 ; 
+								andar_atual <= var_andar_atual ; 
+							ELSE 
+								movimento <= "10" ; 
+								var_andar_atual <= var_andar_atual - 1 ;
+								andar_atual <= var_andar_atual ; 
+							END IF ; 
+						END IF ; 
+					
+					WHEN subindo => 
+						
+						IF (andar_chamado = var_andar_atual) then
+							movimento <= "00" ; 
+						ELSIF (andar_chamado > var_andar_atual) then 
+							var_andar_atual <= var_andar_atual + 1 ; 
+							andar_atual <= var_andar_atual ;
+						ELSE 
+							movimento <= "10" ; 
+							var_andar_atual <= var_andar_atual - 1 ; 
+							andar_atual <= var_andar_atual ; 
+						END IF ; 
+						
+					WHEN descendo => 
+					
+						IF(andar_chamado = var_andar_atual) then 
+							movimento <= "00" ; 
+						ELSIF(andar_chamado > var_andar_atual) then 
+							movimento <= "01" ; 
+							var_andar_atual <= var_andar_atual + 1 ; 
+							andar_atual <= var_andar_atual ;
+						ELSE 
+							var_andar_atual <= var_andar_atual - 1 ; 
+							andar_atual <= var_andar_atual ;
+						END IF ;
+						
+				END CASE ; 
+				
+			END IF ;
+			
+END PROCESS ; 
+END arch ; 
