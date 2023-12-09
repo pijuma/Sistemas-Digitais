@@ -96,7 +96,7 @@ BEGIN
 							estado <= parado ;	
 						ELSIF(andar_chamado > var_andar_atual) then 
 							movimento <= "01" ;
-							
+							estado <= subindo ;
 							var_andar_atual <= var_andar_atual + 1 ; 
 							andar_atual <= var_andar_atual+1 ;
 						ELSE 
