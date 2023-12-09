@@ -3,6 +3,7 @@ USE ieee.std_logic_1164.all ;
 USE ieee.numeric_std.all ; 
 
 ENTITY projeto2 IS 
+	
 	PORT(
 		clk, clk_placa: in std_logic ; 
 		reset: in bit ;
